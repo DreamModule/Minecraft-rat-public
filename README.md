@@ -1,2 +1,4 @@
 # Minecraft-rat-public
-that is a little bit code from my main Minecraft RAT mod
+Самая первая версия (2022-2023) моего рат мода для майнкрафт. 
+credits: teadev, peiljs, tarkovsky<3, procode(?)
+
